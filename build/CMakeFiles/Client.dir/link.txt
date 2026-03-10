@@ -1,0 +1,1 @@
+/usr/bin/cc -g CMakeFiles/Client.dir/src/client.c.o CMakeFiles/Client.dir/src/http.c.o -o bin/Client  -lcurses /usr/lib/x86_64-linux-gnu/libform.so 

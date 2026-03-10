@@ -1,0 +1,1 @@
+/usr/bin/cc -g CMakeFiles/Server.dir/src/server.c.o CMakeFiles/Server.dir/src/http.c.o -o bin/Server  -lcurses /usr/lib/x86_64-linux-gnu/libform.so 

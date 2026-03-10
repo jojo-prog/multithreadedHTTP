@@ -1,0 +1,24 @@
+- HTTP/1.1 support
+- Thread pool
+- Non-blocking sockets
+- File serving
+- Logging
+extra
+- epoll Linux
+- add caching
+
+
+HTTP/1.1 support
+    - Request line parsing
+
+    - Header parsing
+
+    - Host header validation
+
+    - GET + HEAD
+
+    - Persistent connections
+
+    - Content-Length responses
+
+    - Proper status lines

@@ -1,0 +1,5 @@
+/home/jojo/dev/multithreadedHTTP/build/CMakeFiles/http.dir
+/home/jojo/dev/multithreadedHTTP/build/CMakeFiles/Server.dir
+/home/jojo/dev/multithreadedHTTP/build/CMakeFiles/Client.dir
+/home/jojo/dev/multithreadedHTTP/build/CMakeFiles/edit_cache.dir
+/home/jojo/dev/multithreadedHTTP/build/CMakeFiles/rebuild_cache.dir
