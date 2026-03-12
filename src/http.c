@@ -1,6 +1,7 @@
 #include <http.h>
 #include <string.h>
 #include <stdlib.h>
+#include <utils.h>
 #define METHODSNUM 7
 const struct {char* str; Methods m;} methods[7] = {
     {"OPTIONS", OPTIONS},
@@ -171,7 +172,6 @@ int buildMessage(char** message_str, HttpMessage* message, size_t *len) {
        
         RequestLine* rline = (RequestLine*) message->start_line;
         char* method = getMethodStr(rline->method);
-        printf("Uri in Build %s\n", rline->uri);
         size_t rline_size = snprintf(ptr, buffer_size - total_size, "%s %s HTTP/%u.%u" CRLF, method, rline->uri,rline->v_major, rline->v_minor);
         
         
@@ -188,13 +188,13 @@ int buildMessage(char** message_str, HttpMessage* message, size_t *len) {
     
     int next;
     for (size_t i = 0; i < message->num_header; i++) {
-        Header header = message->header[i];
-        char* name =  getHeaderFileNameStr(header.name);
+        Header* header = message->header[i];
+        char* name =  getHeaderFileNameStr(header->name);
         next = snprintf(ptr, buffer_size - total_size,"%s:",name);
         if (advance(&ptr, &total_size, next, buffer_size) < 0)
             return -1;
-        for (size_t j = 0; j < header.content_len; j++) {
-            next = snprintf(ptr,buffer_size - total_size," %s", header.content[i]);
+        for (size_t j = 0; j < header->content_len; j++) {
+            next = snprintf(ptr,buffer_size - total_size," %s", header->content[j]);
             if (advance(&ptr, &total_size, next, buffer_size) < 0)
             return -1;
         }
@@ -216,6 +216,8 @@ int buildMessage(char** message_str, HttpMessage* message, size_t *len) {
     return 0;
 
 }
+
+
 
 char* getNextToken(char **str, const char delim[2]) {
     if (*str == NULL || **str == '\0')
@@ -242,6 +244,54 @@ char* getNextToken(char **str, const char delim[2]) {
     return start;
 }
 
+char* str_trim(char** str) {
+    if (*str == NULL || **str == '\0')
+        return NULL;
+    char *start = *str;
+    char *p = start;
+    while (p[0] == ' ' || p[0] == '\t' || p[0] == '\r' || p[0] == '\n') {
+        p++;
+    }
+    *str = p;
+    return *str;
+}
+
+char* getNextTokenCRLF(char** str) {
+    return getNextToken(str, CRLF);
+}
+
+char* getNextTokenLWS(char** str) {
+    if (*str == NULL || **str == '\0')
+        return NULL;
+
+    char *start = *str;
+    char *p = start;
+
+    while (*p) {
+        if ((p[0] == '\r' && p[1] == '\n') || (p[0] == ' ' || p[0] == '\t')) {
+            *p = '\0';         
+            p++;
+            if (p[0] == '\r' && p[1] == '\n') {
+                *str = p + 2; 
+            } else if (p[0] == ' ' || p[0] == '\t') {
+                while (p[0] == ' ' || p[0] == '\t') {
+                   p++;
+                }
+                *str = p;
+            } else {
+                *str = p;
+            }
+        
+            
+            return start;
+        }
+        p++;
+    }
+
+    *str = p;  // reached end of string
+    return start;
+}
+
 StatusLine* parseStatusLine(char* status_line) {
     StatusLine* sline = (StatusLine*) malloc (sizeof(StatusLine));
     status_line += 5; // skip HTML/
@@ -251,7 +301,7 @@ StatusLine* parseStatusLine(char* status_line) {
     sline->v_minor = atoi(minor);
     char* status_code = getNextToken(&status_line, " ");
     strncpy(sline->status_code,status_code,3);
-    char* phrase = getNextToken(&status_line, CRLF);
+    char* phrase = getNextTokenCRLF(&status_line);
     sline->reason_phrase = phrase;
     sline->phrase_len = strlen(phrase);
 
@@ -263,14 +313,37 @@ RequestLine* parseRequestLine(char* request_line) {
     char* method = getNextToken(&request_line, " ");
     rline->method = getMethod(method);
     char* uri = getNextToken(&request_line, " ");
-    strcpy(rline->uri, uri);
+    rline->uri = uri;
     rline->uri_len = strlen(uri);
     request_line += 5; // skip HTML/
     char* major = getNextToken(&request_line,".");
     rline->v_major = atoi(major);
-    char* minor = getNextToken(&request_line,CRLF);
+    char* minor = getNextTokenCRLF(&request_line);
     rline->v_minor = atoi(minor);
     return rline;
+}
+
+Header* parseHeader(char* header_str) {
+    Header* header = (Header*) malloc(sizeof(Header));
+    char* name_str = getNextToken(&header_str,":");
+    HeaderFieldName name = getHeaderFileName(name_str);
+    header->name = name;
+    str_trim(&header_str);
+    char* ptr = header_str;
+    char* next = getNextTokenLWS(&ptr);
+    
+    da_type(char*) array;
+    da_init(&array);
+
+    while (next) {
+        da_push(&array,next);
+        next = getNextTokenLWS(&ptr);
+    }
+    
+    header->content = array.data;
+    header->content_len = array.size;
+    return header;
+
 }
 
 int parseMessage(HttpMessage* httpmessage, char* message) {
@@ -285,12 +358,31 @@ int parseMessage(HttpMessage* httpmessage, char* message) {
         httpmessage->type = REQUEST;
         httpmessage->start_line = parseRequestLine(first_line);
     }
+    char* next_header = getNextTokenCRLF(&ptr);
+   
+    da_type(char*) array;
+    da_init(&array);
+    while(*next_header != '\0') {
+        da_push(&array,next_header);
+        next_header = getNextTokenCRLF(&ptr);
+    }
+    httpmessage->header = (Header**) malloc(array.size*sizeof(Header*));
+    for (size_t i = 0; i < array.size; i++) {
+        httpmessage->header[i] = parseHeader(array.data[i]);
+    }
+    httpmessage->num_header = array.size;
 
+    da_free(&array);
 
     return 0;
 }
 void freeMessage(HttpMessage* message) {
     free(message->start_line);
+    for (int i = 0; i < message->num_header; i--) {
+        free(message->header[i]->content);
+        free(message->header[i]);
+    }
+    free(message->header);
     free(message);
 }
 

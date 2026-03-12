@@ -77,7 +77,7 @@ typedef struct {
 
 typedef struct {
     Methods method;
-    char uri[256];
+    char* uri;
     size_t uri_len;
     unsigned int v_major;
     unsigned int v_minor;
@@ -103,7 +103,7 @@ typedef enum {
 typedef struct {
     MessageType type;
     void* start_line; // if type REQUEST cast to requestline if type RESPONSE parse to StatusLine
-    Header* header;
+    Header** header;
     size_t num_header;
     char* body;
     size_t body_len;
