@@ -374,6 +374,9 @@ int parseMessage(HttpMessage* httpmessage, char* message) {
 
     da_free(&array);
 
+    httpmessage->body = ptr;
+    httpmessage->body_len = strlen(ptr);
+
     return 0;
 }
 void freeMessage(HttpMessage* message) {

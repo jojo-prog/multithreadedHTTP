@@ -10,8 +10,8 @@ int main()
         .header = (Header*[]){
             &(Header){
                 .name = HOST,
-                .content = (char*[]){"localhost", "www.google.com"},
-                .content_len = 2
+                .content = (char*[]){"localhost"},
+                .content_len = 1
             }
         },
         .num_header = 1,
