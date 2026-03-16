@@ -126,7 +126,7 @@ Methods getMethod(char* str) {
     return -1;
 }
 
-char* getHeaderFileNameStr(HeaderFieldName name) {
+char* getHeaderFieldNameStr(HeaderFieldName name) {
     for (int i = 0; i < HEADERTYPES; i++) {
         if (field_names[i].name == name) {
             return field_names[i].str;
@@ -144,7 +144,7 @@ int getStatusCode(const char code[3]) {
     return -1;
 }
 
-HeaderFieldName getHeaderFileName(char* str) {
+HeaderFieldName getHeaderFieldName(char* str) {
     for (int i = 0; i < HEADERTYPES; i++) {
         if (!strcmp(field_names[i].str ,str)) {
             return field_names[i].name;
@@ -189,7 +189,7 @@ int buildMessage(char** message_str, HttpMessage* message, size_t *len) {
     int next;
     for (size_t i = 0; i < message->num_header; i++) {
         Header* header = message->header[i];
-        char* name =  getHeaderFileNameStr(header->name);
+        char* name =  getHeaderFieldNameStr(header->name);
         next = snprintf(ptr, buffer_size - total_size,"%s:",name);
         if (advance(&ptr, &total_size, next, buffer_size) < 0)
             return -1;
@@ -248,13 +248,16 @@ char* str_trim(char** str) {
     if (*str == NULL || **str == '\0')
         return NULL;
     char *start = *str;
+   
     char *p = start;
     while (p[0] == ' ' || p[0] == '\t' || p[0] == '\r' || p[0] == '\n') {
         p++;
     }
     *str = p;
+    
     return *str;
 }
+
 
 char* getNextTokenCRLF(char** str) {
     return getNextToken(str, CRLF);
@@ -293,6 +296,7 @@ char* getNextTokenLWS(char** str) {
 }
 
 StatusLine* parseStatusLine(char* status_line) {
+    // TODO: handle invalid status_line
     StatusLine* sline = (StatusLine*) malloc (sizeof(StatusLine));
     status_line += 5; // skip HTML/
     char* major = getNextToken(&status_line,".");
@@ -309,6 +313,7 @@ StatusLine* parseStatusLine(char* status_line) {
 }
 
 RequestLine* parseRequestLine(char* request_line) {
+    // TODO: handle invalid request_line
     RequestLine* rline = (RequestLine*) malloc(sizeof(RequestLine));
     char* method = getNextToken(&request_line, " ");
     rline->method = getMethod(method);
@@ -324,9 +329,10 @@ RequestLine* parseRequestLine(char* request_line) {
 }
 
 Header* parseHeader(char* header_str) {
+    // TODO: handle invalid header
     Header* header = (Header*) malloc(sizeof(Header));
     char* name_str = getNextToken(&header_str,":");
-    HeaderFieldName name = getHeaderFileName(name_str);
+    HeaderFieldName name = getHeaderFieldName(name_str);
     header->name = name;
     str_trim(&header_str);
     char* ptr = header_str;
@@ -348,7 +354,9 @@ Header* parseHeader(char* header_str) {
 
 int parseMessage(HttpMessage* httpmessage, char* message) {
     // TODO: check for MUST and SHOULD requirements while parsing
+    // TODO: handle invalid messages
     char *ptr = message;
+    str_trim(&ptr);
     char *first_line = getNextToken(&ptr,CRLF);
     if (!strncmp(first_line, "HTML", 4)) {
         httpmessage->type = RESPONSE;
@@ -381,12 +389,95 @@ int parseMessage(HttpMessage* httpmessage, char* message) {
 }
 void freeMessage(HttpMessage* message) {
     free(message->start_line);
-    for (int i = 0; i < message->num_header; i--) {
+    for (size_t i = 0; i < message->num_header; i--) {
         free(message->header[i]->content);
         free(message->header[i]);
     }
     free(message->header);
     free(message);
+}
+
+bool isEqual(HttpMessage* message1, HttpMessage* message2) {
+    if (message1->type != message2->type) {
+        return false;
+    }
+    if (message1->type == REQUEST) {
+        RequestLine* rline1 = (RequestLine*) message1->start_line;
+        RequestLine* rline2 = (RequestLine*) message2->start_line;
+        if (rline1->method != rline2->method) {
+            printf("Different methods %s != %s", getMethodStr(rline1->method),getMethodStr(rline2->method));
+            return false;
+        }
+        if(rline1->uri_len != rline2->uri_len) {
+            printf("Different Uri length %lu != %lu", rline1->uri_len, rline2->uri_len);
+            return false;
+        }
+        if (strncmp(rline1->uri, rline2->uri, rline1->uri_len) ) {
+            printf("Different Uris %s != %s", rline1->uri, rline2->uri);
+            return false;
+        }
+        if (rline1->v_major != rline2->v_major) {
+            printf("Different Major versions %u != %u",rline1->v_major , rline2->v_major);
+            return false;
+        }
+        if (rline1->v_major != rline2->v_major) {
+            printf("Different Minor versions %u != %u",rline1->v_minor , rline2->v_minor);
+            return false;
+        }
+    } else if (message1->type == RESPONSE) {
+        StatusLine* sline1 = (StatusLine*) message1->start_line;
+        StatusLine* sline2 = (StatusLine*) message2->start_line;
+
+        if (sline1->v_major != sline2->v_major) {
+            printf("Different Major versions %u != %u",sline1->v_major , sline2->v_major);
+            return false;
+        }
+        if (sline1->v_major != sline2->v_major) {
+            printf("Different Minor versions %u != %u",sline1->v_minor , sline2->v_minor);
+            return false;
+        }
+        if (strncmp(sline1->status_code, sline2->status_code, 3)) {
+            printf("Different Status codes %s != %s", sline1->status_code, sline2->status_code);
+            return false;
+        }
+    }
+
+    if (message1->num_header != message2->num_header) {
+        printf("Different number of Header %lu != %lu", message1->num_header, message2->num_header);
+        return false;
+    }
+    for (size_t i = 0; i < message1->num_header; i++) {
+        Header* h1 = message1->header[i];
+        Header* h2 = message2->header[i];
+        if(h1->name != h2->name) {
+            printf("Different Header types %s != %s", getHeaderFieldNameStr(h1->name), getHeaderFieldNameStr(h2->name));
+            return false;
+        }
+        if (h1->content_len != h2->content_len) {
+            printf("Different Content len %lu != %lu",h1->content_len, h2->content_len);
+            return false;
+        }
+
+        for (size_t j = 0; j < h1->content_len; j++) {
+            char* content1 = h1->content[j];
+            char* content2 = h2->content[j];
+            if (strcmp(content1, content2)) {
+                printf("Different Header content %s != %s", content1, content2);
+                return false;
+            }
+        }
+    
+    }
+    if (message1->body_len != message2->body_len) {
+        printf("Different Body len %lu != %lu",message1->body_len , message2->body_len);
+        return false;
+    }
+    if (strncmp(message1->body, message2->body, message1->body_len)) {
+        printf("Different Header Bodys %s != %s", message1->body, message2->body);
+                return false;
+    }
+
+    return true;
 }
 
 

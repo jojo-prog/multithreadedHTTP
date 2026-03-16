@@ -2,6 +2,7 @@
 #define HTTP_H
 #include <stdio.h>
 #include <stddef.h>
+#include <stdbool.h>
 
 #define CRLF "\r\n"
 
@@ -118,7 +119,9 @@ void printMessage(HttpMessage* httpmessage);
 void freeMessage(HttpMessage* message);
 
 #ifdef TEST
-    #include <test.h>
+    char* getNextToken(char **str, const char delim[2]);
+    char* str_trim(char** str);
+    bool isEqual(HttpMessage* message1, HttpMessage* message2);
 #endif // 0
 
 #endif // !HTTP_H

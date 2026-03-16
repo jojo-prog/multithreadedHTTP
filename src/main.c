@@ -4,6 +4,10 @@
 #include <stdlib.h>
 int main()
 {
+    char* m = "  \t \n Hallo    \n\r  ";
+    str_trim(&m);
+    printf("%s\n", m);
+
     HttpMessage httpmessage = {
         .type = REQUEST,
         .start_line = &(RequestLine){ GET, "/index.html", 11, 1, 1 },
@@ -27,6 +31,13 @@ int main()
     char* message2 = malloc(4096);
     buildMessage(&message2,http_m,&size);
     printf("Recreated:\n %s\n", message2);
+
+    if (isEqual(&httpmessage,http_m)) {
+        printf("Messages are equal");
+    } else {
+        printf("Something wrong!");
+    }
+
     freeMessage(http_m);
     free(message);
     free(message2);
