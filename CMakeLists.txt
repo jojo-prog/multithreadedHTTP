@@ -46,6 +46,11 @@ add_executable(http
 	src/main.c
 )
 
+add_executable(test 
+	src/http.c
+	src/test.c
+)
+
 add_executable(${HTTPSERVER_TARGET_NAME}
 	${HTTPSERVER_SOURCES}
 )
@@ -59,15 +64,28 @@ target_include_directories(http
 		"${HTTP_INCLUDE_DIR}"
 )
 
+target_compile_definitions(http PRIVATE _POSIX_C_SOURCE=200809L)
+
+target_include_directories(test
+	PRIVATE
+		"${HTTP_INCLUDE_DIR}"
+)
+
+target_compile_definitions(test PRIVATE _POSIX_C_SOURCE=200809L)
+
 target_include_directories(${HTTPSERVER_TARGET_NAME}
 	PRIVATE
 		"${HTTP_INCLUDE_DIR}"
 )
 
+target_compile_definitions(${HTTPSERVER_TARGET_NAME} PRIVATE _POSIX_C_SOURCE=200809L)
+
 target_include_directories(${HTTPCLIENT_TARGET_NAME}
 	PRIVATE
 		"${HTTP_INCLUDE_DIR}"
 )
+
+target_compile_definitions(${HTTPCLIENT_TARGET_NAME} PRIVATE _POSIX_C_SOURCE=200809L)
 
 target_link_libraries(${HTTPSERVER_TARGET_NAME} PRIVATE ${CURSES_LIBRARIES})
 target_link_libraries(${HTTPCLIENT_TARGET_NAME} PRIVATE ${CURSES_LIBRARIES})

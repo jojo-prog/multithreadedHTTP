@@ -1,0 +1,69 @@
+[2026-03-19 16:05:54] Request #8
+GET http://127.0.0.1:9090/ HTTP/1.1
+Accept-Encoding: identity
+Host: 127.0.0.1:9090
+
+
+================================================================================
+
+[2026-03-19 16:05:55] Request #9
+GET http://127.0.0.1:9090/test HTTP/1.1
+Accept-Encoding: identity
+Host: 127.0.0.1:9090
+
+
+================================================================================
+
+[2026-03-19 16:05:55] Request #10
+GET http://127.0.0.1:9090/api/data HTTP/1.1
+Accept-Encoding: identity
+Host: 127.0.0.1:9090
+
+
+================================================================================
+
+[2026-03-19 16:05:56] Request #11
+GET http://127.0.0.1:9090/nonexistent HTTP/1.1
+Accept-Encoding: identity
+Host: 127.0.0.1:9090
+
+
+================================================================================
+
+[2026-03-19 16:05:56] Request #12
+POST http://127.0.0.1:9090/api/data HTTP/1.1
+Accept-Encoding: identity
+Content-Length: 19
+Host: 127.0.0.1:9090
+
+key=value&data=test
+================================================================================
+
+[2026-03-19 16:06:22] Request #13
+GET http://testserver.local:9090/ HTTP/1.1
+Host: testserver.local:9090
+User-Agent: Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:148.0) Gecko/20100101 Firefox/148.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+Accept-Language: de,en-US;q=0.9,en;q=0.8
+Accept-Encoding: gzip, deflate
+Connection: keep-alive
+Upgrade-Insecure-Requests: 1
+Priority: u=0, i
+
+
+================================================================================
+
+[2026-03-19 16:06:27] Request #15
+GET http://testserver.local:9090/favicon.ico HTTP/1.1
+Host: testserver.local:9090
+User-Agent: Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:148.0) Gecko/20100101 Firefox/148.0
+Accept: image/avif,image/webp,image/png,image/svg+xml,image/*;q=0.8,*/*;q=0.5
+Accept-Language: de,en-US;q=0.9,en;q=0.8
+Accept-Encoding: gzip, deflate
+Connection: keep-alive
+Referer: http://testserver.local:9090/
+Priority: u=6
+
+
+================================================================================
+

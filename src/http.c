@@ -1,3 +1,4 @@
+
 #include <http.h>
 #include <string.h>
 #include <stdlib.h>
@@ -12,7 +13,7 @@ const struct {char* str; Methods m;} methods[7] = {
     {"TRACE", TRACE},
     {"CONNECT", CONNECT}
 };
-#define HEADERTYPES 49
+#define HEADERTYPES 45
 const struct {HeaderFieldName name; char* str; } field_names[] = {
     {CC, "Cache-Control"},
     {CON, "Connection"},

@@ -12,6 +12,7 @@
         (arr)->capacity = 0; \
     } while(0)
 
+#ifndef da_free
 #define da_free(arr) \
     do { \
         free((arr)->data); \
@@ -19,7 +20,9 @@
         (arr)->size = 0; \
         (arr)->capacity = 0; \
     } while(0)
+#endif
 
+#ifndef da_reserve
 #define da_reserve(arr, new_cap) \
     do { \
         if ((new_cap) > (arr)->capacity) { \
@@ -32,6 +35,7 @@
             (arr)->capacity = (new_cap); \
         } \
     } while(0)
+#endif
 
 #define da_push(arr, value) \
     do { \
@@ -42,11 +46,15 @@
         (arr)->data[(arr)->size++] = (value); \
     } while(0)
 
+#ifndef da_pop
 #define da_pop(arr) \
     ((arr)->data[--(arr)->size])
+#endif
 
+#ifndef da_last
 #define da_last(arr) \
     ((arr)->data[(arr)->size - 1])
+#endif
 
 #define da_clear(arr) \
     ((arr)->size = 0)
@@ -64,5 +72,6 @@
         size_t size; \
         size_t capacity; \
     }
+
 
 #endif
