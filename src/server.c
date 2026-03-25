@@ -38,7 +38,6 @@ int event_fd;
 void* worker(void *arg) {
     while (1) {
         client_t *c = dequeue(&job_queue);
-
         // ===== PROCESS =====
         for (size_t i = 0; i < c->in_len; i++)
             c->outbuf[i] = toupper(c->inbuf[i]);
@@ -48,7 +47,6 @@ void* worker(void *arg) {
         c->in_len = 0;
 
         c->want_write = 1;
-
         enqueue(&done_queue, c);
 
         // Notify epoll thread
@@ -76,7 +74,35 @@ int create_server() {
     return server_fd;
 } 
 
-// ===== Main =====
+
+// ===== Modify epoll events =====
+void mod_epoll(int epfd, int fd, uint32_t events, client_t *client) {
+    struct epoll_event ev;
+    ev.events = events | EPOLLET;
+    ev.data.ptr = client;
+
+    epoll_ctl(epfd, EPOLL_CTL_MOD, fd, &ev);
+}
+
+// ===== Close client =====
+void close_client(int epfd, client_t *client) {
+    epoll_ctl(epfd, EPOLL_CTL_DEL, client->fd, NULL);
+    if (client->message) {
+        free(client->message);
+    }
+    close(client->fd);
+    free(client);
+}
+
+
+int hasAllHeaders(char* buffer, size_t len) {
+
+
+    
+
+    return 1;
+}
+
 int main() {
     
     int server_fd = create_server();
@@ -128,10 +154,12 @@ int main() {
 
                     client_t *c = calloc(1, sizeof(client_t));
                     c->fd = fd;
-
+                    c->state = STATE_READING_HEADERS;
+                    c->message = NULL;
                     ev.events = EPOLLIN | EPOLLET;
                     ev.data.ptr = c;
                     epoll_ctl(epfd, EPOLL_CTL_ADD, fd, &ev);
+                    
 
                     printf("Client %d connected\n", fd);
                 }
@@ -153,7 +181,7 @@ int main() {
                     client_t *c = done_queue.items[done_queue.front++];
                     done_queue.front %= QUEUE_SIZE;
                     pthread_mutex_unlock(&done_queue.lock);
-
+                    c->state = STATE_WRITING_RESPONSE;
                     // Enable write event
                     ev.events = EPOLLOUT | EPOLLET;
                     ev.data.ptr = c;
@@ -166,7 +194,7 @@ int main() {
                 client_t *c = events[i].data.ptr;
 
                 // READ
-                if (events[i].events & EPOLLIN) {
+                if (c->state == STATE_READING_HEADERS) {
                     while (1) {
                         ssize_t nread = read(c->fd,
                                              c->inbuf + c->in_len,
@@ -174,8 +202,7 @@ int main() {
 
                         if (nread <= 0) {
                             if (nread == 0 || errno != EAGAIN) {
-                                close(c->fd);
-                                free(c);
+                                close_client(epfd, c);
                             }
                             break;
                         }
@@ -183,12 +210,15 @@ int main() {
                         c->in_len += nread;
                     }
 
-                    if (c->in_len > 0)
+                    if (hasAllHeaders(c->inbuf, c->in_len)) {
+                        c->state = STATE_PROCESSING;
                         enqueue(&job_queue, c);
+                    }
+                        
                 }
 
                 // WRITE
-                if (events[i].events & EPOLLOUT) {
+                if (c->state == STATE_WRITING_RESPONSE) {
                     while (c->out_sent < c->out_len) {
                         ssize_t nwrite = write(c->fd,
                                                c->outbuf + c->out_sent,
@@ -196,8 +226,7 @@ int main() {
 
                         if (nwrite == -1) {
                             if (errno == EAGAIN) break;
-                            close(c->fd);
-                            free(c);
+                            close_client(epfd, c);
                             break;
                         }
 
@@ -207,10 +236,8 @@ int main() {
                     if (c->out_sent == c->out_len) {
                         c->out_len = 0;
                         c->out_sent = 0;
-
-                        ev.events = EPOLLIN | EPOLLET;
-                        ev.data.ptr = c;
-                        epoll_ctl(epfd, EPOLL_CTL_MOD, c->fd, &ev);
+                        c->state = STATE_READING_HEADERS;
+                        mod_epoll(epfd, c->fd, EPOLLIN, c);
                     }
                 }
             }

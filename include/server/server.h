@@ -13,6 +13,7 @@
 #include <arpa/inet.h>
 #include <sys/epoll.h>
 #include <sys/eventfd.h>
+#include <http.h>
 
 #define PORT 8080
 #define MAX_EVENTS 64
@@ -20,9 +21,18 @@
 #define THREADS 4
 #define QUEUE_SIZE 1024
 
+typedef enum {
+    STATE_READING_HEADERS,
+    STATE_PROCESSING,
+    STATE_WRITING_RESPONSE,
+    STATE_KEEP_ALIVE,
+    STATE_CLOSED
+} conn_state_t;
+
 // ===== Client =====
 typedef struct client {
     int fd;
+    conn_state_t state;
 
     char inbuf[BUFFER_SIZE];
     size_t in_len;
@@ -30,6 +40,8 @@ typedef struct client {
     char outbuf[BUFFER_SIZE];
     size_t out_len;
     size_t out_sent;
+
+    HttpMessage *message;
 
     int want_write;
     struct client *next;
@@ -48,6 +60,8 @@ typedef struct {
     pthread_mutex_t lock;
     pthread_cond_t cond;
 } queue_t;
+
+
 
 
 #endif // !SERVER_H

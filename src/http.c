@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <utils.h>
+error = "200";
 #define METHODSNUM 7
 const struct {char* str; Methods m;} methods[7] = {
     {"OPTIONS", OPTIONS},
@@ -299,14 +300,37 @@ char* getNextTokenLWS(char** str) {
 StatusLine* parseStatusLine(char* status_line) {
     // TODO: handle invalid status_line
     StatusLine* sline = (StatusLine*) malloc (sizeof(StatusLine));
+    if (!sline) {
+        return NULL;
+    }
     status_line += 5; // skip HTML/
     char* major = getNextToken(&status_line,".");
+    if(!status_line) {
+        free(sline);
+        error = "400";
+        return NULL;
+    }
     sline->v_major = atoi(major);
     char* minor = getNextToken(&status_line," ");
+    if(!status_line) {
+        free(sline);
+        error = "400";
+        return NULL;
+    }
     sline->v_minor = atoi(minor);
     char* status_code = getNextToken(&status_line, " ");
+    if(!status_line) {
+        free(sline);
+        error = "400";
+        return NULL;
+    }
     strncpy(sline->status_code,status_code,3);
     char* phrase = getNextTokenCRLF(&status_line);
+    if(!status_line) {
+        free(sline);
+        error = "400";
+        return NULL;
+    }
     sline->reason_phrase = phrase;
     sline->phrase_len = strlen(phrase);
 
@@ -316,15 +340,41 @@ StatusLine* parseStatusLine(char* status_line) {
 RequestLine* parseRequestLine(char* request_line) {
     // TODO: handle invalid request_line
     RequestLine* rline = (RequestLine*) malloc(sizeof(RequestLine));
+    if (!rline) return NULL;
     char* method = getNextToken(&request_line, " ");
+    if(!request_line) {
+        free(rline);
+        error = "400";
+        return NULL;
+    }
     rline->method = getMethod(method);
+    if (method == -1) {
+        free(rline);
+        error = "400";
+        return NULL;
+    }
     char* uri = getNextToken(&request_line, " ");
+    if(!request_line) {
+        free(rline);
+        error = "400";
+        return NULL;
+    }
     rline->uri = uri;
     rline->uri_len = strlen(uri);
     request_line += 5; // skip HTML/
     char* major = getNextToken(&request_line,".");
+    if(!request_line) {
+        free(rline);
+        error = "400";
+        return NULL;
+    }
     rline->v_major = atoi(major);
     char* minor = getNextTokenCRLF(&request_line);
+    if(!request_line) {
+        free(rline);
+        error = "400";
+        return NULL;
+    }
     rline->v_minor = atoi(minor);
     return rline;
 }
@@ -333,11 +383,21 @@ Header* parseHeader(char* header_str) {
     // TODO: handle invalid header
     Header* header = (Header*) malloc(sizeof(Header));
     char* name_str = getNextToken(&header_str,":");
+    if(!header_str) {
+        free(header);
+        error = "400";
+        return NULL;
+    }
     HeaderFieldName name = getHeaderFieldName(name_str);
     header->name = name;
     str_trim(&header_str);
     char* ptr = header_str;
     char* next = getNextTokenLWS(&ptr);
+    if(!header_str) {
+        free(header);
+        error = "400";
+        return NULL;
+    }
     
     da_type(char*) array;
     da_init(&array);
@@ -359,25 +419,53 @@ int parseMessage(HttpMessage* httpmessage, char* message) {
     char *ptr = message;
     str_trim(&ptr);
     char *first_line = getNextToken(&ptr,CRLF);
+    if(!*ptr) {
+        return MISSINGSTARTL;
+    }
     if (!strncmp(first_line, "HTML", 4)) {
         httpmessage->type = RESPONSE;
-        httpmessage->start_line = parseStatusLine(first_line);
+        StatusLine* sl = parseStatusLine(first_line);
+        if (sl) {
+            httpmessage->start_line = sl;
+        } else {
+            return BRKSTATUSL;
+        }
+        
 
     } else {
         httpmessage->type = REQUEST;
-        httpmessage->start_line = parseRequestLine(first_line);
+        RequestLine* rl  = parseRequestLine(first_line);
+        if(rl) {
+            httpmessage->start_line = rl;
+        } else {
+            return BRKSRL;
+        }
+        
     }
     char* next_header = getNextTokenCRLF(&ptr);
+    if(!*ptr) {
+        return BRKHEADER;
+    }
    
     da_type(char*) array;
     da_init(&array);
-    while(*next_header != '\0') {
+    while(ptr[0] != '\r' && ptr[0] != '\n') {
         da_push(&array,next_header);
         next_header = getNextTokenCRLF(&ptr);
     }
+    if(!*ptr) {
+            return MISSINGEND;
+    }
+    ptr++;
     httpmessage->header = (Header**) malloc(array.size*sizeof(Header*));
     for (size_t i = 0; i < array.size; i++) {
-        httpmessage->header[i] = parseHeader(array.data[i]);
+        Header* header = parseHeader(array.data[i]);
+        if(header) {
+            httpmessage->header[i] = header;
+        } else {
+            return BRKHEADER;
+        }
+        
     }
     httpmessage->num_header = array.size;
 

@@ -121,10 +121,15 @@ void diffTest() {
 int main(void)
 {
     /* code */
-
-    roundTripTest();
-    fuzzyTest();
-    diffTest();
+    char* message = malloc(256);
+    strcpy(message,"GET /index.html HTTP/1.1\r\nHost: localhost\r\nConnection: keep-alive\r\n\r\n");
+    HttpMessage* http_m1 = (HttpMessage*) malloc(sizeof(HttpMessage));
+    int result = parseMessage(http_m1,message);
+    printf("result %d\n", result);
+    //roundTripTest();
+    //fuzzyTest();
+    //diffTest();
+    free(message);
 
     
     

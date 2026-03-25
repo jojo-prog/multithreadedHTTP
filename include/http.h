@@ -5,6 +5,11 @@
 #include <stdbool.h>
 
 #define CRLF "\r\n"
+#define MISSINGSTARTL 1
+#define BRKHEADER 2
+#define BRKSTATUSL 3
+#define BRKSRL 3
+#define MISSINGEND 4
 
 typedef enum {
     OPTIONS,
@@ -117,6 +122,8 @@ int buildMessage(char** message_str, HttpMessage* message, size_t *len);
 void printMessage(HttpMessage* httpmessage);
 
 void freeMessage(HttpMessage* message);
+
+extern char error[];
 
 #ifdef TEST
     char* getNextToken(char **str, const char delim[2]);
