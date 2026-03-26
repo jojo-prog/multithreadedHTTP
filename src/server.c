@@ -1,6 +1,10 @@
 #include <server/server.h>
+#define NOB_IMPLEMENTATION
+#include "nob.h"
 queue_t job_queue;
 queue_t done_queue;
+
+#define HOST "localhost"
 
 // ===== Queue ops =====
 void enqueue(queue_t *q, void *item) {
@@ -39,8 +43,24 @@ void* worker(void *arg) {
     while (1) {
         client_t *c = dequeue(&job_queue);
         // ===== PROCESS =====
-        for (size_t i = 0; i < c->in_len; i++)
-            c->outbuf[i] = toupper(c->inbuf[i]);
+
+        HttpMessage* message = (HttpMessage*) malloc(sizeof(HttpMessage));
+        int ret = parseMessage(message,c->inbuf);
+
+        if (ret == 0) {
+            if (message->type == REQUEST)  {
+                nob_log(NOB_INFO, "Recived request: \n");
+                printMessage(message);
+            } else if (message->type == RESPONSE)
+            {
+                
+            } else {
+
+            }
+        } else {
+            // build error message for parsing errors
+        }
+
 
         c->out_len = c->in_len;
         c->out_sent = 0;
@@ -97,9 +117,20 @@ void close_client(int epfd, client_t *client) {
 
 int hasAllHeaders(char* buffer, size_t len) {
 
-
+    for (size_t i = 0; i < len - 3; i++)
+    {
+        char b1 = buffer[i];
+        char b2 = buffer[i + 1];
+        char b3 = buffer[i + 2];
+        char b4 = buffer[i + 3];
+        if (b1 == '\r' && b2 == '\n' && b3  == '\r' && b4 == '\n' )
+        {
+            nob_log(NOB_INFO, "All Headers recived, ignoring body");
+            return 0;
+        }
+        
+    }
     
-
     return 1;
 }
 
@@ -134,7 +165,7 @@ int main() {
     for (int i = 0; i < THREADS; i++)
         pthread_create(&threads[i], NULL, worker, NULL);
 
-    printf("epoll + thread pool + eventfd server on port %d\n", PORT);
+    printf("Server on port %d\n", PORT);
 
     while (1) {
         int n = epoll_wait(epfd, events, MAX_EVENTS, -1);
@@ -210,7 +241,7 @@ int main() {
                         c->in_len += nread;
                     }
 
-                    if (hasAllHeaders(c->inbuf, c->in_len)) {
+                    if (c->in_len > 0 && !hasAllHeaders(c->inbuf, c->in_len)) {
                         c->state = STATE_PROCESSING;
                         enqueue(&job_queue, c);
                     }

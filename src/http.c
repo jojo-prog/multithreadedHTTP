@@ -3,7 +3,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <utils.h>
-error = "200";
+char* error = "200";
 #define METHODSNUM 7
 const struct {char* str; Methods m;} methods[7] = {
     {"OPTIONS", OPTIONS},
@@ -567,6 +567,16 @@ bool isEqual(HttpMessage* message1, HttpMessage* message2) {
     }
 
     return true;
+}
+
+void printMessage(HttpMessage* httpmessage) {
+    if (httpmessage->type == REQUEST) {
+        RequestLine* rline = (RequestLine*) httpmessage->start_line;
+    } else if (httpmessage->type == RESPONSE)
+    {
+        /* code */
+    }
+    
 }
 
 

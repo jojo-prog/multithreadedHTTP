@@ -123,7 +123,7 @@ void printMessage(HttpMessage* httpmessage);
 
 void freeMessage(HttpMessage* message);
 
-extern char error[];
+extern char* error;
 
 #ifdef TEST
     char* getNextToken(char **str, const char delim[2]);
