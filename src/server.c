@@ -5,6 +5,8 @@ queue_t job_queue;
 queue_t done_queue;
 
 #define HOST "localhost"
+#define SUPPVMAJOR 1
+#define SUPPVMINOR 1
 
 // ===== Queue ops =====
 void enqueue(queue_t *q, void *item) {
@@ -47,18 +49,28 @@ void* worker(void *arg) {
         HttpMessage* message = (HttpMessage*) malloc(sizeof(HttpMessage));
         int ret = parseMessage(message,c->inbuf);
 
-        if (ret == 0) {
-            if (message->type == REQUEST)  {
-                nob_log(NOB_INFO, "Recived request: \n");
-                printMessage(message);
-            } else if (message->type == RESPONSE)
-            {
-                
-            } else {
 
+
+        if (ret == 0) {
+
+            
+            nob_log(NOB_INFO, "Recived request: \n");
+            printMessage(message);
+            RequestLine *rline = (RequestLine*) message->start_line;
+            if (rline->v_major != SUPPVMAJOR || rline->v_minor != SUPPVMINOR) {
+                code = C505;
+            } else {
+                switch (rline->method) {
+                    case GET:
+                        break;
+                    case HEAD:
+                        break;
+                    default:
+                        nob_log(NOB_ERROR, "Unkown request method");
+                }
             }
-        } else {
-            // build error message for parsing errors
+
+
         }
 
 

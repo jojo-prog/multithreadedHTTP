@@ -3,7 +3,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <utils.h>
-char* error = "200";
+StatusCode code = C200;
 #define METHODSNUM 7
 const struct {char* str; Methods m;} methods[7] = {
     {"OPTIONS", OPTIONS},
@@ -67,47 +67,47 @@ const struct {HeaderFieldName name; char* str; } field_names[] = {
     {LASTMOD, "Last-Modified"}
 };
 
-const char* status_codes[][2] = {
- {"100", "Continue"},
- {"101", "Switching Protocols"},
- {"200", "OK"},
- {"201", "Created"},
- {"202", "Accepted"},
- {"203", "Non-Authoritative Information"},
- {"204", "No Content"},
- {"205", "Reset Content"},
- {"206", "Partial Content"},
- {"300", "Multiple Choices"},
- {"301", "Moved Permanently"},
- {"302", "Found"},
- {"303", "See Other"},
- {"304", "Not Modified"},
- {"305", "Use Proxy"},
- {"307", "Temporary Redirect"},
- {"400", "Bad Request"},
- {"401", "Unauthorized"},
- {"402", "Payment Required"},
- {"403", "Forbidden"},
- {"404", "Not Found"},
- {"405", "Method Not Allowed"},
- {"406", "Not Acceptable"},
- {"407", "Proxy Authentication Required"},
- {"408", "Request Time-out"},
- {"409", "Conflict"},
- {"410", "Gone"},
- {"411", "Length Required"},
- {"412", "Precondition Failed"},
- {"413", "Request Entity Too Large"},
- {"414", "Request-URI Too Large"},
- {"415", "Unsupported Media Type"},
- {"416", "Requested range not satisfiable"},
- {"417", "Expectation Failed"},
- {"500", "Internal Server Error"},
- {"501", "Not Implemented"},
- {"502", "Bad Gateway"},
- {"503", "Service Unavailable"},
- {"504", "Gateway Time-out"},
- {"505", "HTTP Version not supported"}
+const struct {StatusCode name; char* str; } status_codes[] = {
+ {C100, "Continue"},
+ {C101, "Switching Protocols"},
+ {C200, "OK"},
+ {C201, "Created"},
+ {C202, "Accepted"},
+ {C203, "Non-Authoritative Information"},
+ {C204, "No Content"},
+ {C205, "Reset Content"},
+ {C206, "Partial Content"},
+ {C300, "Multiple Choices"},
+ {C301, "Moved Permanently"},
+ {C302, "Found"},
+ {C303, "See Other"},
+ {C304, "Not Modified"},
+ {C305, "Use Proxy"},
+ {C307, "Temporary Redirect"},
+ {C400, "Bad Request"},
+ {C401, "Unauthorized"},
+ {C402, "Payment Required"},
+ {C403, "Forbidden"},
+ {C404, "Not Found"},
+ {C405, "Method Not Allowed"},
+ {C406, "Not Acceptable"},
+ {C407, "Proxy Authentication Required"},
+ {C408, "Request Time-out"},
+ {C409, "Conflict"},
+ {C410, "Gone"},
+ {C411, "Length Required"},
+ {C412, "Precondition Failed"},
+ {C413, "Request Entity Too Large"},
+ {C414, "Request-URI Too Large"},
+ {C415, "Unsupported Media Type"},
+ {C416, "Requested range not satisfiable"},
+ {C417, "Expectation Failed"},
+ {C500, "Internal Server Error"},
+ {C501, "Not Implemented"},
+ {C502, "Bad Gateway"},
+ {C503, "Service Unavailable"},
+ {C504, "Gateway Time-out"},
+ {C505, "HTTP Version not supported"}
 };
 
 char* getMethodStr(Methods method) {
@@ -125,7 +125,7 @@ Methods getMethod(char* str) {
             return methods[i].m;
         }
     }
-    return -1;
+    return INVALID;
 }
 
 char* getHeaderFieldNameStr(HeaderFieldName name) {
@@ -137,14 +137,7 @@ char* getHeaderFieldNameStr(HeaderFieldName name) {
    return NULL;
 }
 
-int getStatusCode(const char code[3]) {
-    for (int i = 0; i < 40; i++) {
-        if (!strncmp(status_codes[i][0],code,3)) {
-            return i;
-        }
-    }
-    return -1;
-}
+
 
 HeaderFieldName getHeaderFieldName(char* str) {
     for (int i = 0; i < HEADERTYPES; i++) {
@@ -152,7 +145,7 @@ HeaderFieldName getHeaderFieldName(char* str) {
             return field_names[i].name;
         }
     }
-    return -1;
+    return NOTFOUND;
 }
 
 int advance(char **ptr, size_t *current, size_t next, size_t max) {
@@ -307,28 +300,28 @@ StatusLine* parseStatusLine(char* status_line) {
     char* major = getNextToken(&status_line,".");
     if(!status_line) {
         free(sline);
-        error = "400";
+        code = C400;
         return NULL;
     }
     sline->v_major = atoi(major);
     char* minor = getNextToken(&status_line," ");
     if(!status_line) {
         free(sline);
-        error = "400";
+        code = C400;
         return NULL;
     }
     sline->v_minor = atoi(minor);
     char* status_code = getNextToken(&status_line, " ");
     if(!status_line) {
         free(sline);
-        error = "400";
+        code = C400;
         return NULL;
     }
     strncpy(sline->status_code,status_code,3);
     char* phrase = getNextTokenCRLF(&status_line);
     if(!status_line) {
         free(sline);
-        error = "400";
+        code = C400;
         return NULL;
     }
     sline->reason_phrase = phrase;
@@ -344,19 +337,19 @@ RequestLine* parseRequestLine(char* request_line) {
     char* method = getNextToken(&request_line, " ");
     if(!request_line) {
         free(rline);
-        error = "400";
+        code = C400;
         return NULL;
     }
     rline->method = getMethod(method);
-    if (method == -1) {
+    if (rline->method == INVALID) {
         free(rline);
-        error = "400";
+        code = C501;
         return NULL;
     }
     char* uri = getNextToken(&request_line, " ");
     if(!request_line) {
         free(rline);
-        error = "400";
+        code = C400;
         return NULL;
     }
     rline->uri = uri;
@@ -365,14 +358,14 @@ RequestLine* parseRequestLine(char* request_line) {
     char* major = getNextToken(&request_line,".");
     if(!request_line) {
         free(rline);
-        error = "400";
+        code = C400;
         return NULL;
     }
     rline->v_major = atoi(major);
     char* minor = getNextTokenCRLF(&request_line);
     if(!request_line) {
         free(rline);
-        error = "400";
+        code = "400";
         return NULL;
     }
     rline->v_minor = atoi(minor);
@@ -380,22 +373,26 @@ RequestLine* parseRequestLine(char* request_line) {
 }
 
 Header* parseHeader(char* header_str) {
-    // TODO: handle invalid header
     Header* header = (Header*) malloc(sizeof(Header));
     char* name_str = getNextToken(&header_str,":");
     if(!header_str) {
         free(header);
-        error = "400";
+        code = C400;
         return NULL;
     }
     HeaderFieldName name = getHeaderFieldName(name_str);
+    if (name == NOTFOUND)
+    {
+
+    }
+    
     header->name = name;
     str_trim(&header_str);
     char* ptr = header_str;
     char* next = getNextTokenLWS(&ptr);
     if(!header_str) {
         free(header);
-        error = "400";
+        code = C400;
         return NULL;
     }
     
@@ -423,14 +420,8 @@ int parseMessage(HttpMessage* httpmessage, char* message) {
         return MISSINGSTARTL;
     }
     if (!strncmp(first_line, "HTML", 4)) {
-        httpmessage->type = RESPONSE;
-        StatusLine* sl = parseStatusLine(first_line);
-        if (sl) {
-            httpmessage->start_line = sl;
-        } else {
-            return BRKSTATUSL;
-        }
-        
+        code = C400;
+        return BRKRL;
 
     } else {
         httpmessage->type = REQUEST;
@@ -438,7 +429,7 @@ int parseMessage(HttpMessage* httpmessage, char* message) {
         if(rl) {
             httpmessage->start_line = rl;
         } else {
-            return BRKSRL;
+            return BRKRL;
         }
         
     }
@@ -572,6 +563,10 @@ bool isEqual(HttpMessage* message1, HttpMessage* message2) {
 void printMessage(HttpMessage* httpmessage) {
     if (httpmessage->type == REQUEST) {
         RequestLine* rline = (RequestLine*) httpmessage->start_line;
+        char* m = getMethodStr(rline->method);
+        printf("Method: %s\n", m);
+        printf("Uri: %s\n", rline->uri);
+        printf("Version: %d.%d\n",rline->v_major, rline->v_minor);
     } else if (httpmessage->type == RESPONSE)
     {
         /* code */
